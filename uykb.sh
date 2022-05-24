@@ -1,5 +1,5 @@
 #! /bin/bash
-yum -y update && yum -y upgrade
+yum -y install ntpdate && timedatectl set-timezone Asia/Shanghai && ntpdate ntp1.aliyun.com
 DATE=`date`
 UNAME=`uname -a`
 echo -e "  
