@@ -25,7 +25,7 @@ read chosen
 if (($chosen==1));then
         bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
 elif (($chosen==2));then
-        wget -N --no-check-certificate "https://raw.githubusercontent.com/uykb/lfx1848/main/tcp.sh" && chmod +x tcp.sh && ./tcp.sh
+        (yum install ca-certificates wget -y && update-ca-trust force-enable) || (apt-get install ca-certificates wget -y) && update-ca-certificates && wget -N --no-check-certificate "https://raw.githubusercontent.com/uykb/lfx1848/main/tcp.sh" && chmod +x tcp.sh && ./tcp.sh
 elif (($chosen==3));then
         wget http://soft.vpser.net/lnmp/lnmp1.8.tar.gz -cO lnmp1.8.tar.gz && tar zxf lnmp1.8.tar.gz && cd lnmp1.8 && ./install.sh lnmp
 elif (($chosen==4));then
