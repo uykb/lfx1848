@@ -1,64 +1,10 @@
 #! /bin/bash
 DATE=`date`
-# 检测系统版本号
-getLinuxOSVersion(){
-    if [[ -s /etc/redhat-release ]]; then
-        osReleaseVersion=$(grep -oE '[0-9.]+' /etc/redhat-release)
-    else
-        osReleaseVersion=$(grep -oE '[0-9.]+' /etc/issue)
-    fi
-
-    # https://unix.stackexchange.com/questions/6345/how-can-i-get-distribution-name-and-version-number-in-a-simple-shell-script
-
-    if [ -f /etc/os-release ]; then
-        # freedesktop.org and systemd
-        source /etc/os-release
-        osInfo=$NAME
-        osReleaseVersionNo=$VERSION_ID
-
-        if [ -n "$VERSION_CODENAME" ]; then
-            osReleaseVersionCodeName=$VERSION_CODENAME
-        fi
-    elif type lsb_release >/dev/null 2>&1; then
-        # linuxbase.org
-        osInfo=$(lsb_release -si)
-        osReleaseVersionNo=$(lsb_release -sr)
-    elif [ -f /etc/lsb-release ]; then
-        # For some versions of Debian/Ubuntu without lsb_release command
-        . /etc/lsb-release
-        osInfo=$DISTRIB_ID
-        
-        osReleaseVersionNo=$DISTRIB_RELEASE
-    elif [ -f /etc/debian_version ]; then
-        # Older Debian/Ubuntu/etc.
-        osInfo=Debian
-        osReleaseVersion=$(cat /etc/debian_version)
-        osReleaseVersionNo=$(sed 's/\..*//' /etc/debian_version)
-    elif [ -f /etc/redhat-release ]; then
-        osReleaseVersion=$(grep -oE '[0-9.]+' /etc/redhat-release)
-    else
-        # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
-        osInfo=$(uname -s)
-        osReleaseVersionNo=$(uname -r)
-    fi
-
-    osReleaseVersionNoShort=$(echo $osReleaseVersionNo | sed 's/\..*//')
-}
 echo -e "  
 ------------------------------------------------------------------------------                                        
 项 目 地 址   https://github.com/uykb/lfx1848 
 博 客         www.lfx1848.cc
 "时间: $DATE"
-
-    getLinuxOSVersion
-    checkArchitecture
-	checkCPU
-
-    [[ -z $(echo $SHELL|grep zsh) ]] && osSystemShell="bash" || osSystemShell="zsh"
-
-    green " OS info: ${osInfo}, ${osRelease}, ${osReleaseVersion}, ${osReleaseVersionNo}, ${osReleaseVersionCodeName}, ${osCPU} CPU ${osArchitecture}, ${osSystemShell}, ${osSystemPackage}, ${osSystemMdPath}"
-}
-
 -------------------------多功能一键安装脚本---------------------------
         1. 安装 v2-ui
         2. 安装 BBR PLUS
