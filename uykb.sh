@@ -52,6 +52,36 @@ docker run -itd --network=host \
     docker build -t x-ui .
 elif (($chosen==11));then
         cd /etc/yum.repos.d/ && cp CentOS-Base.repo CentOS-Base.repo.bak && wget -O CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo && yum clean all && yum update -y && yum makecache -y
+elif (($chosen==12));then
+        {
+    yellow "尝试修复退格键异常问题，退格键正常请不要修复"
+    ! ask_if "是否要继续?(y/n)" && return 0
+    if stty -a | grep -q 'erase = ^?'; then
+        stty erase '^H'
+    elif stty -a | grep -q 'erase = ^H'; then
+        stty erase '^?'
+    fi
+    green "修复完成！！"
+}
+change_dns()
+{
+    red    "注意！！"
+    red    "1.部分云服务商(如阿里云)使用本地服务器作为软件包源，修改dns后需要换源！！"
+    red    "  如果不明白，那么请在安装完成后再修改dns，并且修改完后不要重新安装"
+    red    "2.Ubuntu系统重启后可能会恢复原dns"
+    tyblue "此操作将修改dns服务器为1.1.1.1和1.0.0.1(cloudflare公共dns)"
+    ! ask_if "是否要继续?(y/n)" && return 0
+    if ! grep -q "#This file has been edited by Xray-TLS-Web-setup-script" /etc/resolv.conf; then
+        sed -i 's/^[ \t]*nameserver[ \t][ \t]*/#&/' /etc/resolv.conf
+        {
+            echo
+            echo 'nameserver 1.1.1.1'
+            echo 'nameserver 1.0.0.1'
+            echo '#This file has been edited by Xray-TLS-Web-setup-script'
+        } >> /etc/resolv.conf
+    fi
+    green "修改完成！！"
+}
 elif (($chosen==0));then
         exit 0 
 else
