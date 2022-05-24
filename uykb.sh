@@ -21,7 +21,7 @@ echo "请输入数字1-8进行选择 并 回车确认"
 
 read chosen
 
-if (($chosen==1));then
+if   (($chosen==1));then
         bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
 elif (($chosen==2));then
         wget -N --no-check-certificate "https://raw.githubusercontent.com/chiakge/Linux-NetSpeed/master/tcp.sh" && chmod +x tcp.sh && ./tcp.sh
@@ -40,3 +40,5 @@ elif (($chosen==8));then
 else
         echo "输入命令有误"
  	yum -y update && ./uykb.sh
+if
+
