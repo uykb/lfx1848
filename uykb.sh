@@ -36,19 +36,16 @@ getsys() {
 	echo $system
 }
 
-# centos config update
+# centos config ntp
 centos() {
-	if 
-		yum -y update
+	if [ `yum list installed |grep ntpd |wc -l` == '0' ]; then
+		yum -y update && ./uykb.sh
 	fi
 }
 
-# ubuntu config update
+# ubuntu config ntp
 ubuntu() {
-	if 
-		apt-get -y update
+	if [ `dpkg -l |grep ntpd |wc -l` == '0' ]; then
+		apt-get -y update && ./uykb.sh
 	fi
 }
-
-        yum -y update && ./uykb.sh
-fi
