@@ -38,6 +38,8 @@ elif (($chosen==7));then
         yum install -y yum-utils && yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && yum makecache fast && yum -y install docker-ce && systemctl start docker && systemctl enable docker
 elif (($chosen==8));then
         yum -y install ntpdate && timedatectl set-timezone Asia/Shanghai && ntpdate ntp1.aliyun.com && systemctl start supervisord && systemctl disable firewalld && systemctl stop firewalld && yum -y update && yum -y upgrade
+elif (($chosen==0));then
+        exit 0 
 else
         echo "输入命令有误"
         wget -N --no-check-certificate "https://raw.githubusercontent.com/uykb/lfx1848/main/uykb.sh" && chmod +x uykb.sh && ./uykb.sh
