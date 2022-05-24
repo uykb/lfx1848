@@ -26,5 +26,5 @@ elif (($chosen==4));then
         yum install -y wget && wget -O install.sh http://download.bt.cn/install/install_6.0.sh && sh install.sh
 else
         echo "输入命令有误"
-        ./uykb.sh
+        yum -y update && ./uykb.sh
 fi
