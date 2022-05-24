@@ -17,6 +17,7 @@ echo -e "
         9. 安装 V2RAY(请提前解析域名)
         10.安装X-ui docker版本
         11.更换阿里云源
+        12.修改服务器DNS
         0. 退出脚本
 ------------------------------------------------------------------------------
 "
@@ -53,17 +54,6 @@ docker run -itd --network=host \
 elif (($chosen==11));then
         cd /etc/yum.repos.d/ && cp CentOS-Base.repo CentOS-Base.repo.bak && wget -O CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo && yum clean all && yum update -y && yum makecache -y
 elif (($chosen==12));then
-        {
-    yellow "尝试修复退格键异常问题，退格键正常请不要修复"
-    ! ask_if "是否要继续?(y/n)" && return 0
-    if stty -a | grep -q 'erase = ^?'; then
-        stty erase '^H'
-    elif stty -a | grep -q 'erase = ^H'; then
-        stty erase '^?'
-    fi
-    green "修复完成！！"
-}
-change_dns()
 {
     red    "注意！！"
     red    "1.部分云服务商(如阿里云)使用本地服务器作为软件包源，修改dns后需要换源！！"
