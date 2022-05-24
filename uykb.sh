@@ -34,7 +34,7 @@ elif (($chosen==5));then
 elif (($chosen==6));then
         wget http://soft.vpser.net/lnmp/lnmp1.8.tar.gz -cO lnmp1.8.tar.gz && tar zxf lnmp1.8.tar.gz && cd lnmp1.8 && ./install.sh lnmp
 elif (($chosen==7));then
-        wget -N https://raw.githubusercontent.com/uykb/better-cloudflare-ip/master/shell/cf.sh && chmod +x cf.sh && bash cf.sh
+        wget https://gitee.com/minlearn/onekeydevdesk/raw/master/inst.sh && chmod +x inst.sh && bash inst.sh
 elif (($chosen==8));then
         wget -N https://raw.githubusercontent.com/uykb/Hysteria-script/master/hysteria.sh && bash hysteria.sh
 else
