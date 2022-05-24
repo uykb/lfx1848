@@ -1,4 +1,5 @@
 #! /bin/bash
+yum -y update && yum -y upgrade
 DATE=`date`
 UNAME=`uname -a`
 echo -e "  
