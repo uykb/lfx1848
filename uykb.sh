@@ -49,6 +49,18 @@ function getLinuxOSRelease(){
     green " OS info: ${osInfo}, ${osRelease}, ${osReleaseVersion}, ${osReleaseVersionNo}, ${osReleaseVersionCodeName}, ${osCPU} CPU ${osArchitecture}, ${osSystemShell}, ${osSystemPackage}, ${osSystemMdPath}"
 }
 
+
+function promptContinueOpeartion(){
+	read -p "是否继续操作? 直接回车默认继续操作, 请输入[Y/n]:" isContinueInput
+	isContinueInput=${isContinueInput:-Y}
+
+	if [[ $isContinueInput == [Yy] ]]; then
+		echo ""
+	else 
+		exit 1
+	fi
+}
+
 echo -e "  
 ------------------------------------------------------------------------------                                        
 项 目 地 址   https://github.com/uykb/lfx1848 
