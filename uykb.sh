@@ -27,5 +27,4 @@ elif (($chosen==4));then
 else
         echo "输入命令有误"
  	yum -y update && ./uykb.sh
-	fi
-}
+fi
