@@ -16,6 +16,7 @@ echo -e "
         8. 设置 同步北京时间+关闭防火墙
         9. 安装 V2RAY(请提前解析域名)
         10.安装X-ui docker版本
+        11.更换阿里云源
         0. 退出脚本
 ------------------------------------------------------------------------------
 "
@@ -49,6 +50,8 @@ docker run -itd --network=host \
     --name x-ui --restart=unless-stopped \
     enwaiax/x-ui:latest
     docker build -t x-ui .
+elif (($chosen==11));then
+        cd /etc/yum.repos.d/ && cp CentOS-Base.repo CentOS-Base.repo.bak && wget -O CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo && yum clean all && yum update -y && yum makecache -y
 elif (($chosen==0));then
         exit 0 
 else
