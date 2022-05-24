@@ -1,5 +1,4 @@
 #! /bin/bash
-yum -y install ntpdate && timedatectl set-timezone Asia/Shanghai && ntpdate ntp1.aliyun.com
 DATE=`date`
 UNAME=`uname -a`
 echo -e "  
@@ -16,9 +15,10 @@ echo -e "
         5. 安装 Hysteria
         6. 安装 一键DD系统脚本 
         7. 一件安装docker环境
+        8. 同步北京时间➕关闭防火墙➕更新
 ------------------------------------------------------------------------------
 "
-echo "请输入数字1-7进行选择 并 回车确认"
+echo "请输入数字1-8进行选择 并 回车确认"
 
 read chosen
 
@@ -36,6 +36,8 @@ elif (($chosen==6));then
         wget https://gitee.com/minlearn/onekeydevdesk/raw/master/inst.sh && chmod +x inst.sh && bash inst.sh
 elif (($chosen==7));then
         yum install -y yum-utils && yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && yum makecache fast && yum -y install docker-ce && systemctl start docker && systemctl enable docker
+elif (($chosen==8));then
+        yum -y install ntpdate && timedatectl set-timezone Asia/Shanghai && ntpdate ntp1.aliyun.com && systemctl start supervisord && systemctl disable firewalld && systemctl stop firewalld && yum -y update && yum -y upgrade
 else
         echo "输入命令有误"
         wget -N --no-check-certificate "https://raw.githubusercontent.com/uykb/lfx1848/main/uykb.sh" && chmod +x uykb.sh && ./uykb.sh
