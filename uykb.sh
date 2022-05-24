@@ -42,7 +42,7 @@ elif (($chosen==8));then
 elif (($chosen==9));then
         wget -N --no-check-certificate git.io/v.sh && chmod +x v.sh && bash v.sh
 elif (($chosen==10));then
-        yum -y update && yum -y upgrade && yum install -y vim || (apt-get -y update && apt-get install -y vim)
+        yum -y update && yum -y upgrade && yum install -y vim
 elif (($chosen==0));then
         exit 0 
 else
