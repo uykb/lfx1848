@@ -20,7 +20,7 @@ echo -e "
 echo "请输入数字1-8进行选择 并 回车确认"
 
 read chosen
-if
+
 elif (($chosen==1));then
         bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
 elif (($chosen==2));then
@@ -40,4 +40,3 @@ elif (($chosen==8));then
 else
         echo "输入命令有误"
  	yum -y update && ./uykb.sh
-fi
