@@ -49,7 +49,16 @@ echo -e "
 项 目 地 址   https://github.com/uykb/lfx1848 
 博 客         www.lfx1848.cc
 "时间: $DATE"
-"系统: ${osInfo}, ${osRelease}, ${osReleaseVersion}, ${osReleaseVersionNo}, ${osReleaseVersionCodeName}, ${osCPU} CPU ${osArchitecture}, ${osSystemShell}, ${osSystemPackage}, ${osSystemMdPath}"
+
+    getLinuxOSVersion
+    checkArchitecture
+	checkCPU
+
+    [[ -z $(echo $SHELL|grep zsh) ]] && osSystemShell="bash" || osSystemShell="zsh"
+
+    green " OS info: ${osInfo}, ${osRelease}, ${osReleaseVersion}, ${osReleaseVersionNo}, ${osReleaseVersionCodeName}, ${osCPU} CPU ${osArchitecture}, ${osSystemShell}, ${osSystemPackage}, ${osSystemMdPath}"
+}
+
 -------------------------多功能一键安装脚本---------------------------
         1. 安装 v2-ui
         2. 安装 BBR PLUS
