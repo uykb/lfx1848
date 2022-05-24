@@ -11,10 +11,11 @@ echo -e "
         3. 安装 LNMP一键安装包
         4. 安装 宝塔面板
         5. 安装 Hysteria
-        6. 安装 一键DD系统脚本       
+        6. 安装 一键DD系统脚本 
+        7. 一件安装docker环境
 ------------------------------------------------------------------------------
 "
-echo "请输入数字1-6进行选择 并 回车确认"
+echo "请输入数字1-7进行选择 并 回车确认"
 
 read chosen
 
@@ -30,6 +31,8 @@ elif (($chosen==5));then
         wget -N https://raw.githubusercontent.com/uykb/Hysteria-script/master/hysteria.sh && bash hysteria.sh
 elif (($chosen==6));then
         wget https://gitee.com/minlearn/onekeydevdesk/raw/master/inst.sh && chmod +x inst.sh && bash inst.sh
+elif (($chosen==7));then
+        yum install -y yum-utils && yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && yum makecache fast && yum -y install docker-ce && systemctl start docker && systemctl enable docker
 else
         echo "输入命令有误"
         wget -N --no-check-certificate "https://raw.githubusercontent.com/uykb/lfx1848/main/uykb.sh" && chmod +x uykb.sh && ./uykb.sh
