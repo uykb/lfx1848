@@ -5,7 +5,7 @@ echo -e "
 作 者         uykb                                           
 项 目 地 址   https://github.com/uykb/lfx1848 
 博 客         www.lfx1848.cc
-"当前时间: $DATE"
+"时间: $DATE"
 -------------------------多功能一键安装脚本---------------------------
         1. 安装 v2-ui
         2. 安装 BBR PLUS
