@@ -1,6 +1,54 @@
 #! /bin/bash
 DATE=`date`
 UNAME=`uname -a`
+# 检测系统发行版代号
+function getLinuxOSRelease(){
+    if [[ -f /etc/redhat-release ]]; then
+        osRelease="centos"
+        osSystemPackage="yum"
+        osSystemMdPath="/usr/lib/systemd/system/"
+        osReleaseVersionCodeName=""
+    elif cat /etc/issue | grep -Eqi "debian|raspbian"; then
+        osRelease="debian"
+        osSystemPackage="apt-get"
+        osSystemMdPath="/lib/systemd/system/"
+        osReleaseVersionCodeName="buster"
+    elif cat /etc/issue | grep -Eqi "ubuntu"; then
+        osRelease="ubuntu"
+        osSystemPackage="apt-get"
+        osSystemMdPath="/lib/systemd/system/"
+        osReleaseVersionCodeName="bionic"
+    elif cat /etc/issue | grep -Eqi "centos|red hat|redhat"; then
+        osRelease="centos"
+        osSystemPackage="yum"
+        osSystemMdPath="/usr/lib/systemd/system/"
+        osReleaseVersionCodeName=""
+    elif cat /proc/version | grep -Eqi "debian|raspbian"; then
+        osRelease="debian"
+        osSystemPackage="apt-get"
+        osSystemMdPath="/lib/systemd/system/"
+        osReleaseVersionCodeName="buster"
+    elif cat /proc/version | grep -Eqi "ubuntu"; then
+        osRelease="ubuntu"
+        osSystemPackage="apt-get"
+        osSystemMdPath="/lib/systemd/system/"
+        osReleaseVersionCodeName="bionic"
+    elif cat /proc/version | grep -Eqi "centos|red hat|redhat"; then
+        osRelease="centos"
+        osSystemPackage="yum"
+        osSystemMdPath="/usr/lib/systemd/system/"
+        osReleaseVersionCodeName=""
+    fi
+
+    getLinuxOSVersion
+    checkArchitecture
+	checkCPU
+
+    [[ -z $(echo $SHELL|grep zsh) ]] && osSystemShell="bash" || osSystemShell="zsh"
+
+    green " OS info: ${osInfo}, ${osRelease}, ${osReleaseVersion}, ${osReleaseVersionNo}, ${osReleaseVersionCodeName}, ${osCPU} CPU ${osArchitecture}, ${osSystemShell}, ${osSystemPackage}, ${osSystemMdPath}"
+}
+
 echo -e "  
 ------------------------------------------------------------------------------                                        
 项 目 地 址   https://github.com/uykb/lfx1848 
