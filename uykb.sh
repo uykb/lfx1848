@@ -26,5 +26,29 @@ elif (($chosen==4));then
         yum install -y wget && wget -O install.sh http://download.bt.cn/install/install_6.0.sh && sh install.sh
 else
         echo "输入命令有误"
+        # get system type
+getsys() {
+	if [ ! -f "/etc/redhat-release" ]; then
+		system="ubuntu"
+	else
+		system="centos"
+	fi
+	echo $system
+}
+
+# centos config update
+centos() {
+	if 
+		yum -y update
+	fi
+}
+
+# ubuntu config update
+ubuntu() {
+	if 
+		apt-get -y update
+	fi
+}
+
         yum -y update && ./uykb.sh
 fi
