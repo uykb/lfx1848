@@ -21,7 +21,7 @@ echo "请输入数字1-6进行选择 并 回车确认"
 
 read chosen
 
-if (($chosen==1));then
+elif (($chosen==1));then
         bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
 elif (($chosen==2));then
         wget -N --no-check-certificate "https://raw.githubusercontent.com/chiakge/Linux-NetSpeed/master/tcp.sh" && chmod +x tcp.sh && ./tcp.sh
@@ -29,19 +29,12 @@ elif (($chosen==3));then
         wget "https://github.com/cx9208/bbrplus/raw/master/ok_bbrplus_centos.sh" && chmod +x ok_bbrplus_centos.sh && ./ok_bbrplus_centos.sh
 elif (($chosen==4));then
         yum install -y wget && wget -O install.sh http://download.bt.cn/install/install_6.0.sh && sh install.sh
-else
 elif (($chosen==5));then
         bash <(curl -Ls https://cdn.jsdelivr.net/gh/uykb/XrayR-V2Board/install.sh)
-else
-elif (($chosen==5));then
-        bash <(curl -Ls https://cdn.jsdelivr.net/gh/uykb/XrayR-V2Board/install.sh)
-else
 elif (($chosen==6));then
         wget http://soft.vpser.net/lnmp/lnmp1.8.tar.gz -cO lnmp1.8.tar.gz && tar zxf lnmp1.8.tar.gz && cd lnmp1.8 && ./install.sh lnmp
-else
 elif (($chosen==7));then
         curl https://raw.githubusercontent.com/uykb/better-cloudflare-ip/master/shell/cf.sh -o cf.sh && chmod +x cf.sh && ./cf.sh
-else
 elif (($chosen==8));then
         wget -N https://raw.githubusercontent.com/uykb/Hysteria-script/master/hysteria.sh && bash hysteria.sh
 else
