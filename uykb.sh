@@ -18,7 +18,7 @@ echo -e "
         9. 安装 V2RAY(请提前解析域名)
         10.安装X-ui docker版本
         11.更换阿里云源
-        12.修改服务器DNS
+        12.脚本跑分测速
         0. 退出脚本
 ------------------------------------------------------------------------------
 "
@@ -55,7 +55,7 @@ docker run -itd --network=host \
 elif (($chosen==11));then
         cd /etc/yum.repos.d/ && cp CentOS-Base.repo CentOS-Base.repo.bak && wget -O CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo && yum clean all && yum update -y && yum makecache -y
 elif (($chosen==12));then
-        yum -y update
+        wget -qO- bench.sh | bash
 elif (($chosen==0));then
         exit 0 
 else
