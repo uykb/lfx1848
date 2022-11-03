@@ -14,7 +14,7 @@ echo -e "
         6. 安装 一键DD系统脚本 
         7. 安装 docker环境
         8. 设置 关闭防火墙
-        9. 安装 V2RAY(请提前解析域名)
+        9. 安装FlyWall docker版本
         10.安装X-ui docker版本
         11.更换阿里云源
         12.脚本跑分测速
@@ -43,7 +43,7 @@ elif (($chosen==7));then
 elif (($chosen==8));then
         systemctl disable firewalld && systemctl stop firewalld && systemctl mask --now firewalld && ./uykb.sh
 elif (($chosen==9));then
-        wget -N --no-check-certificate git.io/v.sh && chmod +x v.sh && bash v.sh
+        git clone https://github.com/akvsdk/FlyWall.git && cd FlyWall && bash OneKeySet.sh
 elif (($chosen==10));then
         mkdir x-ui && cd x-ui
 docker run -itd --network=host \
