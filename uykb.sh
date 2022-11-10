@@ -6,7 +6,7 @@ echo -e "
 博 客         www.lfx1848.cc
 "当前时间: $DATE"
 -------------------------多功能一键安装脚本---------------------------
-        1. 安装 v2-ui
+        1. 安装 v2-ui 魔改版
         2. 安装 BBR PLUS
         3. 安装 NaiveProxy
         4. 安装 宝塔面板
@@ -27,7 +27,7 @@ echo "请输入数字进行选择 并 回车确认"
 read chosen
 
 if (($chosen==1));then
-        bash <(curl -Ls https://raw.githubusercontent.com/vaxilu/x-ui/master/install.sh)
+        bash <(curl -Ls https://raw.githubusercontent.com/FranzKafkaYu/x-ui/master/install_en.sh)
 elif (($chosen==2));then
         wget --no-check-certificate -O /opt/bbr.sh https://github.com/teddysun/across/raw/master/bbr.sh && chmod 755 /opt/bbr.sh && /opt/bbr.sh
 elif (($chosen==3));then
