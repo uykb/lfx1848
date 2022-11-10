@@ -11,10 +11,10 @@ echo -e "
         3. 安装 NaiveProxy
         4. 安装 宝塔面板
         5. 安装 Hysteria
-        6. 安装 一键DD系统脚本 
+        6. 安装 一键vmess脚本 
         7. 安装 docker环境
         8. 设置 关闭防火墙
-        9. 安装FlyWall docker版本
+        9. 限制🚫IP登录服务器
         10.安装X-ui docker版本
         11.更换阿里云源
         12.脚本跑分测速
@@ -33,17 +33,22 @@ elif (($chosen==2));then
 elif (($chosen==3));then
         wget https://raw.githubusercontent.com/imajeason/nas_tools/main/NaiveProxy/install.sh && bash install.sh
 elif (($chosen==4));then
-        wget -O install.sh http://download.bt.cn/install/install_6.0.sh && sh install.sh
+        wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && sudo bash install.sh forum
 elif (($chosen==5));then
         bash <(curl -fsSL https://git.io/hysteria.sh)
 elif (($chosen==6));then
-        wget https://gitee.com/minlearn/onekeydevdesk/raw/master/inst.sh && chmod +x inst.sh && bash inst.sh
+        wget 'https://cdn.n101.workers.dev/https://raw.githubusercontent.com/daycat/stupid-simple-vmess/main/install.sh' -O install.sh && bash install.sh
 elif (($chosen==7));then
-        yum install -y yum-utils && yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && yum makecache fast && yum -y install docker-ce && systemctl start docker && systemctl enable docker
+        apt-get -y update && apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release && mkdir -p /etc/apt/keyrings
+ curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && apt-get update -y && apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 elif (($chosen==8));then
         systemctl disable firewalld && systemctl stop firewalld && systemctl mask --now firewalld && ./uykb.sh
 elif (($chosen==9));then
-        git clone https://github.com/akvsdk/FlyWall.git && cd FlyWall && bash OneKeySet.sh
+        echo sshd:45.61.164.230:allow>/etc/hosts.allow && echo sshd:ALL>/etc/hosts.deny && /bin/systemctl restart sshd.service
 elif (($chosen==10));then
         mkdir x-ui && cd x-ui
 docker run -itd --network=host \
