@@ -24,7 +24,7 @@ echo "请输入数字进行选择 并 回车确认"
 read chosen
 
 if   (($chosen==1));then
-      apt-get install -y screen && screen -S sid && apt update -y && apt upgrade -y && echo deb http://deb.debian.org/debian unstable main contrib non-free>/etc/apt/sources.list && apt update -y && apt upgrade -y && apt install linux-image-cloud-amd64 -y && apt autoremove -y && reboot
+      apt update -y && apt upgrade -y && echo deb http://deb.debian.org/debian unstable main contrib non-free>/etc/apt/sources.list && apt update -y && apt upgrade -y && apt install linux-image-cloud-amd64 -y && apt autoremove -y && reboot
 elif (($chosen==2));then
       wget --no-check-certificate -O /opt/bbr.sh https://github.com/teddysun/across/raw/master/bbr.sh && chmod 755 /opt/bbr.sh && /opt/bbr.sh  
 elif (($chosen==3));then
