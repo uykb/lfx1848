@@ -39,12 +39,7 @@ elif (($chosen==5));then
 elif (($chosen==6));then
         wget 'https://cdn.n101.workers.dev/https://raw.githubusercontent.com/daycat/stupid-simple-vmess/main/install.sh' -O install.sh && bash install.sh
 elif (($chosen==7));then
-        apt-get -y update && apt-get install \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release && mkdir -p /etc/apt/keyrings
- curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && apt-get update -y && apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+       apt-get update --allow-releaseinfo-change && apt-get -y update && curl -fsSL https://test.docker.com -o test-docker.sh && sh test-docker.sh
 elif (($chosen==8));then
         systemctl disable firewalld && systemctl stop firewalld && systemctl mask --now firewalld && ./uykb.sh
 elif (($chosen==9));then
