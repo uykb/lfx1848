@@ -29,10 +29,10 @@ elif ((chosen==3)); then
 elif ((chosen==4)); then
     echo sshd:20.113.44.185:allow>/etc/hosts.allow && echo sshd:ALL>/etc/hosts.deny && /bin/systemctl restart sshd.service 
 elif ((chosen==5)); then
-    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
-    echo 'deb [arch=amd64] https://download.docker.com/linux/debian buster stable' > /etc/apt/sources.list.d/docker.list
-    apt update
-    apt install docker-ce docker-ce-cli containerd.io
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+    rm get-docker.sh
+    usermod -aG docker $(whoami)
 elif ((chosen==0)); then
     exit 0 
 else
