@@ -43,7 +43,7 @@ elif (($chosen==7));then
 elif (($chosen==8));then
         systemctl disable firewalld && systemctl stop firewalld && systemctl mask --now firewalld && ./uykb.sh
 elif (($chosen==9));then
-        echo sshd:45.61.164.230:allow>/etc/hosts.allow && echo sshd:ALL>/etc/hosts.deny && /bin/systemctl restart sshd.service
+        echo sshd:15.204.161.117:allow>/etc/hosts.allow && echo sshd:ALL>/etc/hosts.deny && /bin/systemctl restart sshd.service
 elif (($chosen==10));then
         mkdir x-ui && cd x-ui
 docker run -itd --network=host \
