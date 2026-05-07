@@ -2,9 +2,30 @@
 
 # 检查并自动提权
 if [ $EUID -ne 0 ]; then
-    echo "检测到非 root 用户，正在尝试使用 sudo 提权..."
+    echo "检测到非 root 用户，正在尝试提权..."
     if command -v sudo &> /dev/null; then
-        exec sudo "$0" "$@"
+        if [[ "$0" == /dev/fd/* ]]; then
+            # 处理 bash <(curl ...) 管道运行的情况
+            TMP_SCRIPT=$(mktemp /tmp/uykb1_XXXXXX.sh)
+            if command -v curl &> /dev/null; then
+                curl -fsSL https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh -o "$TMP_SCRIPT"
+            elif command -v wget &> /dev/null; then
+                wget -qO "$TMP_SCRIPT" https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh
+            else
+                echo "错误：无法下载脚本，请手动安装 curl 或 wget"
+                exit 1
+            fi
+            if [ -f "$TMP_SCRIPT" ]; then
+                sudo bash "$TMP_SCRIPT"
+                rm -f "$TMP_SCRIPT"
+                exit 0
+            else
+                echo "错误：脚本下载失败"
+                exit 1
+            fi
+        else
+            exec sudo "$0" "$@"
+        fi
     else
         echo "错误：此脚本需要 root 权限运行。请使用 'sudo ./uykb1.sh' 运行。"
         exit 1
