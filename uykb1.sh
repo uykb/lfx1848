@@ -599,6 +599,13 @@ elif ((chosen==6)); then
 elif ((chosen==0)); then
     exit 0 
 else
-    echo "输入命令有误"
-    wget -N --no-check-certificate "https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh" && chmod +x uykb1.sh && ./uykb1.sh
+    echo "输入命令有误，正在尝试更新脚本..."
+    if command -v wget &> /dev/null; then
+        wget -N --no-check-certificate "https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh" && chmod +x uykb1.sh && ./uykb1.sh
+    elif command -v curl &> /dev/null; then
+        curl -fsSL "https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh" -o uykb1.sh && chmod +x uykb1.sh && ./uykb1.sh
+    else
+        echo "错误：未找到 wget 或 curl，无法自动更新脚本"
+        exit 1
+    fi
 fi
