@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# 检查并自动提权
+if [ $EUID -ne 0 ]; then
+    echo "检测到非 root 用户，正在尝试使用 sudo 提权..."
+    if command -v sudo &> /dev/null; then
+        exec sudo "$0" "$@"
+    else
+        echo "错误：此脚本需要 root 权限运行。请使用 'sudo ./uykb1.sh' 运行。"
+        exit 1
+    fi
+fi
+
 DATE=`date`
 
 # 检测操作系统类型和包管理器
