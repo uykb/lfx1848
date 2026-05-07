@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# 设置 UTF-8 编码，防止终端乱码
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+
 # 检查并自动提权
 if [ $EUID -ne 0 ]; then
     echo "检测到非 root 用户，正在尝试提权..."
