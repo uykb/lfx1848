@@ -77,6 +77,17 @@ detect_os() {
 
 detect_os
 
+# 安全读取函数：兼容管道运行模式 (curl ... | bash)
+user_read() {
+    if [ -t 0 ]; then
+        read "$@"
+    elif [ -e /dev/tty ]; then
+        read "$@" < /dev/tty
+    else
+        return 1
+    fi
+}
+
 # 服务管理函数
 service_restart() {
     local svc=$1
@@ -328,7 +339,7 @@ bbr_install() {
     bbr_install_kernel
     bbr_sysctl_config
     bbr_info "安装完成，需要重启系统以应用新内核"
-    read -p "是否现在重启系统? [y/n]: " is_reboot
+    user_read -p "是否现在重启系统? [y/n]: " is_reboot
     if [[ ${is_reboot} == "y" || ${is_reboot} == "Y" ]]; then
         reboot
     else
@@ -354,7 +365,7 @@ echo -e "
 
 echo "请输入数字进行选择 并 回车确认"
 
-read chosen
+user_read chosen
 
 if ((chosen==1)); then
     case $OS in
@@ -493,7 +504,7 @@ elif ((chosen==3)); then
     echo "注意：文件描述符限制需重新登录后生效"
 elif ((chosen==4)); then
     echo "请输入允许登录的IP地址（多个IP用空格分隔）："
-    read -a allow_ips
+    user_read -a allow_ips
     if [ ${#allow_ips[@]} -eq 0 ]; then
         echo "IP地址不能为空"
         exit 1
