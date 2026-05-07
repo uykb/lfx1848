@@ -115,7 +115,7 @@ check_tmux_for_long_task() {
         tmux send-keys -t $SESSION_NAME "bash $0 $1" Enter
         echo "已在 tmux 会话 '$SESSION_NAME' 中启动任务"
         echo "查看进度: tmux attach -t $SESSION_NAME"
-        echo "分离会话: Ctrl+B 然后按 D"
+        echo "分离会话: 输入 'tmux detach' 或按 Ctrl+B D"
         tmux attach-session -t $SESSION_NAME
         exit 0
     fi
