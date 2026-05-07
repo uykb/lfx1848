@@ -387,18 +387,78 @@ elif ((chosen==2)); then
     esac
     bbr_install
 elif ((chosen==3)); then
-    echo "正在进行性能调优..."
-    case $OS in
-        alpine)
-            echo -e 'net.ipv4.tcp_congestion_control=bbr\nnet.core.default_qdisc=cake\nnet.ipv4.tcp_slow_start_after_idle=0\nnet.ipv4.tcp_notsent_lowat=16384\nnet.core.rmem_max=4000000' >> /etc/sysctl.conf
-            sysctl -p
-            ;;
-        *)
-            echo -e 'net.ipv4.tcp_congestion_control=bbr\nnet.core.default_qdisc=cake\nnet.ipv4.tcp_slow_start_after_idle=0\nnet.ipv4.tcp_notsent_lowat=16384\nnet.core.rmem_max=4000000' >> /etc/sysctl.conf
-            sysctl -p
-            ;;
-    esac
-    echo "性能调优完成"
+    echo "正在进行全面性能调优..."
+    if [ $EUID -ne 0 ]; then
+        echo "此功能需要 root 权限运行"
+        exit 1
+    fi
+    # 确保 sysctl.conf 存在
+    touch /etc/sysctl.conf
+    # 定义优化参数数组
+    declare -A sysctl_params
+    # 网络拥塞控制
+    sysctl_params["net.ipv4.tcp_congestion_control"]="bbr"
+    sysctl_params["net.core.default_qdisc"]="fq"
+    # 连接复用优化
+    sysctl_params["net.ipv4.tcp_tw_reuse"]="1"
+    sysctl_params["net.ipv4.tcp_fin_timeout"]="30"
+    sysctl_params["net.ipv4.tcp_max_syn_backlog"]="16384"
+    sysctl_params["net.ipv4.tcp_syncookies"]="1"
+    # TCP 性能优化
+    sysctl_params["net.ipv4.tcp_slow_start_after_idle"]="0"
+    sysctl_params["net.ipv4.tcp_notsent_lowat"]="16384"
+    sysctl_params["net.core.rmem_max"]="4000000"
+    sysctl_params["net.core.wmem_max"]="4000000"
+    sysctl_params["net.ipv4.tcp_rmem"]="4096 87380 4000000"
+    sysctl_params["net.ipv4.tcp_wmem"]="4096 65536 4000000"
+    sysctl_params["net.core.netdev_max_backlog"]="262144"
+    sysctl_params["net.core.somaxconn"]="65535"
+    # Keepalive 心跳参数
+    sysctl_params["net.ipv4.tcp_keepalive_time"]="600"
+    sysctl_params["net.ipv4.tcp_keepalive_intvl"]="10"
+    sysctl_params["net.ipv4.tcp_keepalive_probes"]="6"
+    # 内存管理优化
+    sysctl_params["vm.swappiness"]="10"
+    sysctl_params["vm.dirty_background_ratio"]="5"
+    sysctl_params["vm.dirty_ratio"]="10"
+    # 文件描述符优化
+    sysctl_params["fs.file-max"]="1048576"
+    sysctl_params["fs.nr_open"]="1048576"
+    # 使用 sed 更新或添加参数
+    for key in "${!sysctl_params[@]}"; do
+        value="${sysctl_params[$key]}"
+        if grep -q "^${key}" /etc/sysctl.conf 2>/dev/null; then
+            sed -i "s|^${key}.*|${key} = ${value}|" /etc/sysctl.conf
+        else
+            echo "${key} = ${value}" >> /etc/sysctl.conf
+        fi
+    done
+    # 应用 sysctl 配置
+    sysctl -p 2>/dev/null || true
+    # 配置 limits.conf (nofile 限制)
+    if [ -f /etc/security/limits.conf ]; then
+        # 移除旧的 nofile 配置
+        sed -i '/^\*\s*soft\s*nofile/d' /etc/security/limits.conf
+        sed -i '/^\*\s*hard\s*nofile/d' /etc/security/limits.conf
+        sed -i '/^root\s*soft\s*nofile/d' /etc/security/limits.conf
+        sed -i '/^root\s*hard\s*nofile/d' /etc/security/limits.conf
+        # 添加新配置
+        echo "* soft nofile 1048576" >> /etc/security/limits.conf
+        echo "* hard nofile 1048576" >> /etc/security/limits.conf
+        echo "root soft nofile 1048576" >> /etc/security/limits.conf
+        echo "root hard nofile 1048576" >> /etc/security/limits.conf
+        echo "已配置文件描述符限制 (nofile 1048576)"
+    fi
+    # Alpine 特殊处理
+    if [ "$OS" = "alpine" ]; then
+        # Alpine 使用 /etc/security/limits.conf 可能不同，配置 /etc/init.d/ 脚本
+        if [ -f /etc/inittab ]; then
+            echo "ulimit -n 1048576" >> /etc/profile 2>/dev/null || true
+        fi
+    fi
+    echo "性能调优完成！"
+    echo "已优化：BBR拥塞控制 | 连接复用 | Keepalive心跳 | 内存管理 | 文件描述符"
+    echo "注意：文件描述符限制需重新登录后生效"
 elif ((chosen==4)); then
     echo "请输入允许登录的IP地址（多个IP用空格分隔）："
     read -a allow_ips
