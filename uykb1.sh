@@ -81,18 +81,7 @@ detect_os() {
 
 detect_os
 
-# 安全读取函数：兼容管道运行模式 (curl ... | bash)
-user_read() {
-    if [ -t 0 ]; then
-        read "$@"
-    elif [ -e /dev/tty ]; then
-        read "$@" < /dev/tty
-    else
-        return 1
-    fi
-}
-
-# 检查是否在 tmux 中，如果不在则提示
+# 服务管理函数
 check_tmux_for_long_task() {
     if [ -n "$TMUX" ]; then
         return 0
@@ -100,7 +89,7 @@ check_tmux_for_long_task() {
     
     if ! command -v tmux &> /dev/null; then
         echo "警告：未安装 tmux，网络断开将导致任务中断"
-        user_read -p "是否继续? [y/n]: " continue_without_tmux
+        read -p "是否继续? [y/n]: " continue_without_tmux < /dev/tty 2>/dev/null || read -p "是否继续? [y/n]: " continue_without_tmux
         if [[ ${continue_without_tmux} != "y" && ${continue_without_tmux} != "Y" ]]; then
             echo "请先安装 tmux: sudo apt install tmux (Debian/Ubuntu) 或 sudo yum install tmux (CentOS)"
             exit 0
@@ -109,7 +98,7 @@ check_tmux_for_long_task() {
     fi
     
     echo "检测到耗时任务，建议在 tmux 会话中运行以防网络断开"
-    user_read -p "是否切换到 tmux 会话运行? [y/n]: " switch_to_tmux
+    read -p "是否切换到 tmux 会话运行? [y/n]: " switch_to_tmux < /dev/tty 2>/dev/null || read -p "是否切换到 tmux 会话运行? [y/n]: " switch_to_tmux
     if [[ ${switch_to_tmux} == "y" || ${switch_to_tmux} == "Y" ]]; then
         SESSION_NAME="uykb1_task"
         if tmux has-session -t $SESSION_NAME 2>/dev/null; then
@@ -376,7 +365,7 @@ bbr_install() {
     bbr_install_kernel
     bbr_sysctl_config
     bbr_info "安装完成，需要重启系统以应用新内核"
-    user_read -p "是否现在重启系统? [y/n]: " is_reboot
+    read -p "是否现在重启系统? [y/n]: " is_reboot < /dev/tty 2>/dev/null || read -p "是否现在重启系统? [y/n]: " is_reboot
     if [[ ${is_reboot} == "y" || ${is_reboot} == "Y" ]]; then
         reboot
     else
@@ -403,7 +392,7 @@ echo -e "
 
 echo "请输入数字进行选择 并 回车确认"
 
-user_read chosen
+read chosen < /dev/tty 2>/dev/null || read chosen
 
 if ((chosen==1)); then
     check_tmux_for_long_task 1
@@ -544,7 +533,7 @@ elif ((chosen==3)); then
     echo "注意：文件描述符限制需重新登录后生效"
 elif ((chosen==4)); then
     echo "请输入允许登录的IP地址（多个IP用空格分隔）："
-    user_read -a allow_ips
+    read -a allow_ips < /dev/tty 2>/dev/null || read -a allow_ips
     if [ ${#allow_ips[@]} -eq 0 ]; then
         echo "IP地址不能为空"
         exit 1
@@ -702,10 +691,10 @@ elif ((chosen==7)); then
     echo "2. 附加到现有会话"
     echo "3. 删除指定会话"
     echo "0. 返回主菜单"
-    user_read -p "请选择: " tmux_choice
+    read -p "请选择: " tmux_choice < /dev/tty 2>/dev/null || read -p "请选择: " tmux_choice
     case $tmux_choice in
         1)
-            user_read -p "会话名称 (默认: uykb1): " session_name
+            read -p "会话名称 (默认: uykb1): " session_name < /dev/tty 2>/dev/null || read -p "会话名称 (默认: uykb1): " session_name
             session_name=${session_name:-uykb1}
             tmux new-session -d -s $session_name
             tmux send-keys -t $session_name "bash $0" Enter
@@ -713,11 +702,11 @@ elif ((chosen==7)); then
             echo "使用 'tmux attach -t $session_name' 查看"
             ;;
         2)
-            user_read -p "会话名称: " attach_name
+            read -p "会话名称: " attach_name < /dev/tty 2>/dev/null || read -p "会话名称: " attach_name
             tmux attach-session -t $attach_name 2>/dev/null || echo "会话不存在"
             ;;
         3)
-            user_read -p "要删除的会话名称: " kill_name
+            read -p "要删除的会话名称: " kill_name < /dev/tty 2>/dev/null || read -p "要删除的会话名称: " kill_name
             tmux kill-session -t $kill_name 2>/dev/null && echo "已删除会话" || echo "删除失败"
             ;;
         0)
