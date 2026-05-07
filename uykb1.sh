@@ -88,6 +88,39 @@ user_read() {
     fi
 }
 
+# 检查是否在 tmux 中，如果不在则提示
+check_tmux_for_long_task() {
+    if [ -n "$TMUX" ]; then
+        return 0
+    fi
+    
+    if ! command -v tmux &> /dev/null; then
+        echo "警告：未安装 tmux，网络断开将导致任务中断"
+        user_read -p "是否继续? [y/n]: " continue_without_tmux
+        if [[ ${continue_without_tmux} != "y" && ${continue_without_tmux} != "Y" ]]; then
+            echo "请先安装 tmux: sudo apt install tmux (Debian/Ubuntu) 或 sudo yum install tmux (CentOS)"
+            exit 0
+        fi
+        return 0
+    fi
+    
+    echo "检测到耗时任务，建议在 tmux 会话中运行以防网络断开"
+    user_read -p "是否切换到 tmux 会话运行? [y/n]: " switch_to_tmux
+    if [[ ${switch_to_tmux} == "y" || ${switch_to_tmux} == "Y" ]]; then
+        SESSION_NAME="uykb1_task"
+        if tmux has-session -t $SESSION_NAME 2>/dev/null; then
+            tmux kill-session -t $SESSION_NAME
+        fi
+        tmux new-session -d -s $SESSION_NAME
+        tmux send-keys -t $SESSION_NAME "bash $0 $1" Enter
+        echo "已在 tmux 会话 '$SESSION_NAME' 中启动任务"
+        echo "查看进度: tmux attach -t $SESSION_NAME"
+        echo "分离会话: Ctrl+B 然后按 D"
+        tmux attach-session -t $SESSION_NAME
+        exit 0
+    fi
+}
+
 # 服务管理函数
 service_restart() {
     local svc=$1
@@ -359,6 +392,7 @@ echo -e "
         4. 限制IP登录服务器
         5. 安装 Docker
         6. 快速清理 Linux 资源
+        7. Tmux 会话管理
         0. 退出脚本
 ------------------------------------------------------------------------------
 "
@@ -368,6 +402,7 @@ echo "请输入数字进行选择 并 回车确认"
 user_read chosen
 
 if ((chosen==1)); then
+    check_tmux_for_long_task 1
     case $OS in
         debian)
             echo "正在升级到 Debian sid..."
@@ -408,6 +443,7 @@ if ((chosen==1)); then
             ;;
     esac
 elif ((chosen==2)); then
+    check_tmux_for_long_task 2
     echo "正在安装 BBR..."
     if [ $EUID -ne 0 ]; then
         echo "此功能需要 root 权限运行"
@@ -532,6 +568,7 @@ elif ((chosen==4)); then
     esac
     echo "已配置仅允许IP ${allow_ips[*]} 登录SSH"
 elif ((chosen==5)); then
+    check_tmux_for_long_task 5
     echo "正在安装 Docker..."
     case $OS in
         alpine)
@@ -628,6 +665,64 @@ elif ((chosen==6)); then
     fi
     echo "清理完成！"
     df -h / 2>/dev/null || true
+elif ((chosen==7)); then
+    if ! command -v tmux &> /dev/null; then
+        echo "正在安装 tmux..."
+        case $PKG_MGR in
+            apt)
+                apt update -y && apt install -y tmux
+                ;;
+            dnf)
+                dnf install -y tmux
+                ;;
+            yum)
+                yum install -y tmux
+                ;;
+            apk)
+                apk add tmux
+                ;;
+            pacman)
+                pacman -Sy --noconfirm tmux
+                ;;
+            *)
+                echo "无法自动安装 tmux，请手动安装"
+                exit 1
+                ;;
+        esac
+    fi
+    echo "=== Tmux 会话管理 ==="
+    echo "当前活跃的 tmux 会话:"
+    tmux list-sessions 2>/dev/null || echo "无活跃会话"
+    echo ""
+    echo "1. 创建新会话并运行脚本"
+    echo "2. 附加到现有会话"
+    echo "3. 删除指定会话"
+    echo "0. 返回主菜单"
+    user_read -p "请选择: " tmux_choice
+    case $tmux_choice in
+        1)
+            user_read -p "会话名称 (默认: uykb1): " session_name
+            session_name=${session_name:-uykb1}
+            tmux new-session -d -s $session_name
+            tmux send-keys -t $session_name "bash $0" Enter
+            echo "已创建会话 '$session_name' 并启动脚本"
+            echo "使用 'tmux attach -t $session_name' 查看"
+            ;;
+        2)
+            user_read -p "会话名称: " attach_name
+            tmux attach-session -t $attach_name 2>/dev/null || echo "会话不存在"
+            ;;
+        3)
+            user_read -p "要删除的会话名称: " kill_name
+            tmux kill-session -t $kill_name 2>/dev/null && echo "已删除会话" || echo "删除失败"
+            ;;
+        0)
+            exec "$0"
+            ;;
+        *)
+            echo "无效选择"
+            ;;
+    esac
 elif ((chosen==0)); then
     exit 0 
 else
