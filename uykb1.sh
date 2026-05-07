@@ -81,14 +81,22 @@ detect_os() {
 
 detect_os
 
-# 安全读取函数：兼容管道运行模式 (curl ... | bash)
-user_read() {
-    if [ -t 0 ]; then
-        read "$@"
-    elif [ -e /dev/tty ]; then
-        read "$@" < /dev/tty
+# 获取安全的脚本路径（用于Tmux）
+get_tmux_script_path() {
+    if [[ "$0" == /dev/fd/* ]]; then
+        local safe_path="/tmp/uykb1.sh"
+        if [ ! -f "$safe_path" ]; then
+            echo "正在下载脚本到本地以支持 Tmux 会话..."
+            if command -v curl &> /dev/null; then
+                curl -fsSL https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh -o "$safe_path"
+            elif command -v wget &> /dev/null; then
+                wget -qO "$safe_path" https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh
+            fi
+            chmod +x "$safe_path"
+        fi
+        echo "$safe_path"
     else
-        return 1
+        echo "$0"
     fi
 }
 
@@ -116,7 +124,7 @@ check_tmux_for_long_task() {
             tmux kill-session -t $SESSION_NAME
         fi
         tmux new-session -d -s $SESSION_NAME
-        tmux send-keys -t $SESSION_NAME "bash $0 $1" Enter
+        tmux send-keys -t $SESSION_NAME "bash $(get_tmux_script_path) $1" Enter
         echo "已在 tmux 会话 '$SESSION_NAME' 中启动任务"
         echo "查看进度: tmux attach -t $SESSION_NAME"
         echo "分离会话: 输入 'tmux detach' 或按 Ctrl+B D"
@@ -708,7 +716,7 @@ elif ((chosen==7)); then
             user_read -p "会话名称 (默认: uykb1): " session_name
             session_name=${session_name:-uykb1}
             tmux new-session -d -s $session_name
-            tmux send-keys -t $session_name "bash $0" Enter
+            tmux send-keys -t $session_name "bash $(get_tmux_script_path)" Enter
             echo "已创建会话 '$session_name' 并启动脚本"
             echo "使用 'tmux attach -t $session_name' 查看"
             ;;
