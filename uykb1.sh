@@ -85,6 +85,225 @@ pkg_install() {
     esac
 }
 
+# BBR 安装相关函数
+bbr_red() {
+    printf '\033[1;31;31m%b\033[0m' "$1"
+}
+
+bbr_green() {
+    printf '\033[1;31;32m%b\033[0m' "$1"
+}
+
+bbr_yellow() {
+    printf '\033[1;31;33m%b\033[0m' "$1"
+}
+
+bbr_info() {
+    bbr_green "[Info] "
+    printf -- "%s" "$1"
+    printf "\n"
+}
+
+bbr_error() {
+    bbr_red "[Error] "
+    printf -- "%s" "$1"
+    printf "\n"
+    exit 1
+}
+
+bbr_exists() {
+    local cmd="$1"
+    if eval type type > /dev/null 2>&1; then
+        eval type "$cmd" > /dev/null 2>&1
+    elif command > /dev/null 2>&1; then
+        command -v "$cmd" > /dev/null 2>&1
+    else
+        which "$cmd" > /dev/null 2>&1
+    fi
+    local rt=$?
+    return ${rt}
+}
+
+bbr_is_64bit() {
+    if [ $(getconf WORD_BIT) = '32' ] && [ $(getconf LONG_BIT) = '64' ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+bbr_version_ge() {
+    test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" == "$1"
+}
+
+bbr_check_bbr_status() {
+    local param=$(sysctl net.ipv4.tcp_congestion_control | awk '{print $3}')
+    if [[ x"${param}" == x"bbr" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+bbr_check_kernel_version() {
+    local kernel_version=$(uname -r | cut -d- -f1)
+    if bbr_version_ge ${kernel_version} 4.9; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+bbr_sysctl_config() {
+    [ -f /etc/sysctl.conf ] && sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
+    [ -f /etc/sysctl.conf ] && sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
+    echo "net.core.default_qdisc = fq" >> /etc/sysctl.conf
+    echo "net.ipv4.tcp_congestion_control = bbr" >> /etc/sysctl.conf
+    sysctl -p >/dev/null 2>&1
+}
+
+bbr_get_latest_version() {
+    local latest_version=($(wget -qO- https://kernel.ubuntu.com/~kernel-ppa/mainline/ | awk -F'\"v' '/v[4-9]./{print $2}' | cut -d/ -f1 | grep -v - | sort -V))
+    [ ${#latest_version[@]} -eq 0 ] && bbr_error "获取最新内核版本失败"
+    local kernel_arr=()
+    for i in ${latest_version[@]}; do
+        if bbr_version_ge $i 5.15; then
+            kernel_arr+=($i);
+        fi
+    done
+    if [ ${#kernel_arr[@]} -gt 0 ]; then
+        kernel=${kernel_arr[${#kernel_arr[@]}-1]}
+    else
+        kernel=${latest_version[${#latest_version[@]}-1]}
+    fi
+    if bbr_is_64bit; then
+        local deb_name=$(wget -qO- https://kernel.ubuntu.com/~kernel-ppa/mainline/v${kernel}/ | grep "linux-image" | grep "generic" | awk -F'\">' '/amd64.deb/{print $2}' | cut -d'<' -f1 | head -1)
+        deb_kernel_url="https://kernel.ubuntu.com/~kernel-ppa/mainline/v${kernel}/${deb_name}"
+        deb_kernel_name="linux-image-${kernel}-amd64.deb"
+        local modules_deb_name=$(wget -qO- https://kernel.ubuntu.com/~kernel-ppa/mainline/v${kernel}/ | grep "linux-modules" | grep "generic" | awk -F'\">' '/amd64.deb/{print $2}' | cut -d'<' -f1 | head -1)
+        deb_kernel_modules_url="https://kernel.ubuntu.com/~kernel-ppa/mainline/v${kernel}/${modules_deb_name}"
+        deb_kernel_modules_name="linux-modules-${kernel}-amd64.deb"
+    else
+        local deb_name=$(wget -qO- https://kernel.ubuntu.com/~kernel-ppa/mainline/v${kernel}/ | grep "linux-image" | grep "generic" | awk -F'\">' '/i386.deb/{print $2}' | cut -d'<' -f1 | head -1)
+        deb_kernel_url="https://kernel.ubuntu.com/~kernel-ppa/mainline/v${kernel}/${deb_name}"
+        deb_kernel_name="linux-image-${kernel}-i386.deb"
+        local modules_deb_name=$(wget -qO- https://kernel.ubuntu.com/~kernel-ppa/mainline/v${kernel}/ | grep "linux-modules" | grep "generic" | awk -F'\">' '/i386.deb/{print $2}' | cut -d'<' -f1 | head -1)
+        deb_kernel_modules_url="https://kernel.ubuntu.com/~kernel-ppa/mainline/v${kernel}/${modules_deb_name}"
+        deb_kernel_modules_name="linux-modules-${kernel}-i386.deb"
+    fi
+    [ -z "${deb_name}" ] && bbr_error "获取内核包名失败"
+}
+
+bbr_install_kernel_debian() {
+    bbr_info "获取最新内核版本..."
+    bbr_get_latest_version
+    if [ -n "${modules_deb_name}" ]; then
+        wget -c -t3 -T60 -O ${deb_kernel_modules_name} ${deb_kernel_modules_url} || bbr_error "下载内核模块包失败"
+    fi
+    wget -c -t3 -T60 -O ${deb_kernel_name} ${deb_kernel_url} || bbr_error "下载内核包失败"
+    dpkg -i ${deb_kernel_modules_name} ${deb_kernel_name} || bbr_error "安装内核失败"
+    rm -f ${deb_kernel_modules_name} ${deb_kernel_name}
+    /usr/sbin/update-grub
+}
+
+bbr_install_kernel_centos6() {
+    bbr_exists perl || pkg_install perl
+    local rpm_kernel_url="https://dl.lamp.sh/files/"
+    if bbr_is_64bit; then
+        local rpm_kernel_name="kernel-ml-4.18.20-1.el6.elrepo.x86_64.rpm"
+        local rpm_kernel_devel_name="kernel-ml-devel-4.18.20-1.el6.elrepo.x86_64.rpm"
+    else
+        local rpm_kernel_name="kernel-ml-4.18.20-1.el6.elrepo.i686.rpm"
+        local rpm_kernel_devel_name="kernel-ml-devel-4.18.20-1.el6.elrepo.i686.rpm"
+    fi
+    wget -c -t3 -T60 -O ${rpm_kernel_name} ${rpm_kernel_url}${rpm_kernel_name} || bbr_error "下载内核失败"
+    wget -c -t3 -T60 -O ${rpm_kernel_devel_name} ${rpm_kernel_url}${rpm_kernel_devel_name} || bbr_error "下载内核devel失败"
+    rpm -ivh ${rpm_kernel_name} || bbr_error "安装内核失败"
+    rpm -ivh ${rpm_kernel_devel_name} || bbr_error "安装内核devel失败"
+    rm -f ${rpm_kernel_name} ${rpm_kernel_devel_name}
+    [ ! -f "/boot/grub/grub.conf" ] && bbr_error "/boot/grub/grub.conf 不存在"
+    sed -i 's/^default=.*/default=0/g' /boot/grub/grub.conf
+}
+
+bbr_install_kernel_centos7() {
+    local rpm_kernel_url="https://dl.lamp.sh/kernel/el7/"
+    if bbr_is_64bit; then
+        local rpm_kernel_name="kernel-ml-5.15.60-1.el7.x86_64.rpm"
+        local rpm_kernel_devel_name="kernel-ml-devel-5.15.60-1.el7.x86_64.rpm"
+    else
+        bbr_error "不支持32位系统"
+    fi
+    wget -c -t3 -T60 -O ${rpm_kernel_name} ${rpm_kernel_url}${rpm_kernel_name} || bbr_error "下载内核失败"
+    wget -c -t3 -T60 -O ${rpm_kernel_devel_name} ${rpm_kernel_url}${rpm_kernel_devel_name} || bbr_error "下载内核devel失败"
+    rpm -ivh ${rpm_kernel_name} || bbr_error "安装内核失败"
+    rpm -ivh ${rpm_kernel_devel_name} || bbr_error "安装内核devel失败"
+    rm -f ${rpm_kernel_name} ${rpm_kernel_devel_name}
+    /usr/sbin/grub2-set-default 0
+}
+
+bbr_install_kernel() {
+    case $OS in
+        centos)
+            if [ -f /etc/redhat-release ]; then
+                local centos_ver=$(awk '{print $3}' /etc/redhat-release | cut -d. -f1)
+                if [ "$centos_ver" -eq 6 ]; then
+                    bbr_install_kernel_centos6
+                elif [ "$centos_ver" -eq 7 ]; then
+                    bbr_install_kernel_centos7
+                fi
+            fi
+            ;;
+        rhel|rocky|almalinux|fedora)
+            bbr_info "使用官方源安装最新内核..."
+            if [ "$PKG_MGR" = "dnf" ]; then
+                dnf install -y kernel kernel-modules || bbr_error "安装内核失败"
+            else
+                yum install -y kernel kernel-modules || bbr_error "安装内核失败"
+            fi
+            grub2-set-default 0 2>/dev/null || true
+            ;;
+        ubuntu|debian)
+            bbr_install_kernel_debian
+            ;;
+        alpine)
+            bbr_info "Alpine 系统安装最新内核..."
+            pkg_install linux-lts linux-lts-dev
+            update-grub 2>/dev/null || update-extlinux 2>/dev/null || true
+            ;;
+        arch)
+            bbr_info "Arch Linux 系统安装最新内核..."
+            pkg_install linux linux-headers
+            grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
+            ;;
+        *)
+            bbr_error "不支持的操作系统: $OS"
+            ;;
+    esac
+}
+
+bbr_install() {
+    if bbr_check_bbr_status; then
+        bbr_info "TCP BBR 已经启用，无需安装"
+        return 0
+    fi
+    if bbr_check_kernel_version; then
+        bbr_info "内核版本 >= 4.9，直接启用 BBR..."
+        bbr_sysctl_config
+        bbr_info "BBR 启用成功"
+        return 0
+    fi
+    bbr_info "内核版本 < 4.9，正在安装新内核..."
+    bbr_install_kernel
+    bbr_sysctl_config
+    bbr_info "安装完成，需要重启系统以应用新内核"
+    read -p "是否现在重启系统? [y/n]: " is_reboot
+    if [[ ${is_reboot} == "y" || ${is_reboot} == "Y" ]]; then
+        reboot
+    else
+        bbr_info "已取消重启，请手动重启以应用 BBR"
+    fi
+}
+
 echo -e "  
 ------------------------------------------------------------------------------                                        
 项 目 地 址   https://github.com/uykb/lfx1848 
@@ -146,7 +365,12 @@ if ((chosen==1)); then
             ;;
     esac
 elif ((chosen==2)); then
-    echo "正在安装 BBR PLUS..."
+    echo "正在安装 BBR..."
+    if [ $EUID -ne 0 ]; then
+        echo "此功能需要 root 权限运行"
+        exit 1
+    fi
+    # 安装必要依赖
     case $PKG_MGR in
         apt)
             pkg_install wget ca-certificates
@@ -161,9 +385,7 @@ elif ((chosen==2)); then
             pkg_install wget ca-certificates
             ;;
     esac
-    wget --no-check-certificate -O /opt/bbr.sh https://github.com/teddysun/across/raw/master/bbr.sh
-    chmod 755 /opt/bbr.sh
-    /opt/bbr.sh
+    bbr_install
 elif ((chosen==3)); then
     echo "正在进行性能调优..."
     case $OS in
