@@ -481,6 +481,176 @@ install_docker_official() {
     rm -f /tmp/get-docker.sh
 }
 
+# Hysteria2 安装相关函数
+hy2_generate_password() {
+    if command -v openssl &> /dev/null; then
+        openssl rand -base64 18
+    else
+        dd if=/dev/urandom bs=18 count=1 status=none | base64 2>/dev/null || head -c 18 /dev/urandom | base64
+    fi
+}
+
+hy2_generate_config() {
+    local password="$1"
+    local port="${2:-40443}"
+    cat << EOF
+listen: :${port}
+
+# 使用自签名证书
+tls:
+  cert: /etc/hysteria/server.crt
+  key: /etc/hysteria/server.key
+
+auth:
+  type: password
+  password: ${password}
+
+masquerade:
+  type: proxy
+  proxy:
+    url: https://bing.com/
+    rewriteHost: true
+EOF
+}
+
+hy2_generate_systemd_service() {
+    cat << 'EOF'
+[Unit]
+Description=Hysteria 2 Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/hysteria server --config /etc/hysteria/config.yaml
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=512000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
+hy2_generate_openrc_service() {
+    cat << 'EOF'
+#!/sbin/openrc-run
+
+name="hysteria"
+command="/usr/local/bin/hysteria"
+command_args="server --config /etc/hysteria/config.yaml"
+pidfile="/var/run/${name}.pid"
+command_background="yes"
+
+depend() {
+    need networking
+}
+EOF
+}
+
+hy2_install() {
+    log_msg "INFO" "正在安装 Hysteria2..."
+    
+    # 安装依赖
+    case "${PKG_MGR}" in
+        apt)
+            pkg_install wget curl openssl
+            ;;
+        dnf|yum)
+            pkg_install wget curl openssl
+            ;;
+        apk)
+            pkg_install wget curl openssl
+            ;;
+        pacman)
+            pkg_install wget curl openssl
+            ;;
+        *)
+            log_msg "ERROR" "不支持的包管理器"
+            return 1
+            ;;
+    esac
+    
+    # 生成随机密码
+    local hy2_password
+    hy2_password="$(hy2_generate_password)"
+    if [[ -z "${hy2_password}" ]]; then
+        log_msg "ERROR" "生成密码失败"
+        return 1
+    fi
+    
+    local hy2_port="40443"
+    log_msg "INFO" "端口: ${hy2_port}"
+    log_msg "INFO" "密码: ${hy2_password}"
+    
+    # 创建目录
+    mkdir -p /etc/hysteria
+    
+    # 下载 Hysteria2 二进制文件
+    log_msg "INFO" "正在下载 Hysteria2..."
+    local arch="amd64"
+    if [[ "$(uname -m)" == "aarch64" ]]; then
+        arch="arm64"
+    fi
+    
+    wget -O /usr/local/bin/hysteria "https://download.hysteria.network/app/latest/hysteria-linux-${arch}" --no-check-certificate --timeout=60 || {
+        log_msg "ERROR" "下载 Hysteria2 失败"
+        return 1
+    }
+    chmod +x /usr/local/bin/hysteria
+    
+    # 生成自签名证书
+    log_msg "INFO" "正在生成 SSL 证书..."
+    openssl req -x509 -nodes -newkey ec:<(openssl ecparam -name prime256v1) \
+        -keyout /etc/hysteria/server.key \
+        -out /etc/hysteria/server.crt \
+        -subj "/CN=bing.com" -days 36500 2>/dev/null || {
+        log_msg "ERROR" "生成 SSL 证书失败"
+        return 1
+    }
+    
+    # 写入配置文件
+    hy2_generate_config "${hy2_password}" "${hy2_port}" > /etc/hysteria/config.yaml
+    
+    # 配置自启动
+    case "${INIT_SYS}" in
+        systemd)
+            hy2_generate_systemd_service > /etc/systemd/system/hysteria.service
+            systemctl daemon-reload 2>/dev/null || true
+            systemctl enable hysteria 2>/dev/null || true
+            service_restart hysteria
+            ;;
+        openrc)
+            hy2_generate_openrc_service > /etc/init.d/hysteria
+            chmod +x /etc/init.d/hysteria
+            rc-update add hysteria 2>/dev/null || true
+            rc-service hysteria start 2>/dev/null || true
+            ;;
+        sysvinit)
+            hy2_generate_openrc_service > /etc/init.d/hysteria
+            chmod +x /etc/init.d/hysteria
+            service hysteria start 2>/dev/null || true
+            ;;
+    esac
+    
+    # 显示配置信息
+    echo ""
+    log_msg "INFO" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_msg "INFO" "Hysteria2 安装完成!"
+    log_msg "INFO" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_msg "INFO" "服务器地址: 服务器IP:${hy2_port}"
+    log_msg "INFO" "密码: ${hy2_password}"
+    log_msg "INFO" "TLS SNI: bing.com"
+    log_msg "INFO" "端口: ${hy2_port}"
+    log_msg "INFO" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_msg "INFO" "配置文件: /etc/hysteria/config.yaml"
+    log_msg "INFO" "证书文件: /etc/hysteria/server.crt"
+    log_msg "INFO" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_msg "INFO" "客户端配置: 选择自定义协议，填入上述信息"
+    log_msg "INFO" "查看状态: systemctl status hysteria (systemd)"
+    log_msg "INFO" "          rc-service hysteria status (openrc)"
+    log_msg "INFO" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
 # 显示菜单
 show_menu() {
     echo -e "  
@@ -496,6 +666,7 @@ show_menu() {
         5. 安装 Docker
         6. 快速清理 Linux 资源
         7. Tmux 会话管理
+        8. 安装 Hysteria2
         0. 退出脚本
 ------------------------------------------------------------------------------
 "
@@ -937,6 +1108,9 @@ main_menu() {
         df -h / 2>/dev/null || true
     elif [[ "${chosen}" == "7" ]]; then
         tmux_manager
+    elif [[ "${chosen}" == "8" ]]; then
+        check_tmux_for_long_task 8
+        hy2_install
     elif [[ "${chosen}" == "0" ]]; then
         log_msg "INFO" "退出脚本"
         exit 0 
