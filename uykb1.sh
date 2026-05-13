@@ -3,9 +3,17 @@
 # 严格模式：遇到错误立即退出，使用未定义变量报错，管道失败则整体失败
 set -euo pipefail
 
-# 设置 UTF-8 编码，防止终端乱码
-export LANG=C.UTF-8
-export LC_ALL=C.UTF-8
+# 设置 UTF-8 编码，防止终端乱码（兼容旧系统）
+if locale -a 2>/dev/null | grep -qi 'c.utf-8\|c.utf8'; then
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+elif locale -a 2>/dev/null | grep -qi 'en_us.utf'; then
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+else
+    export LANG=C
+    export LC_ALL=C
+fi
 
 # 常量定义
 SCRIPT_URL="https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh"
