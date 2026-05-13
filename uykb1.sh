@@ -4,16 +4,22 @@
 set -euo pipefail
 
 # 设置 UTF-8 编码，防止终端乱码（兼容旧系统）
-if locale -a 2>/dev/null | grep -qi 'c.utf-8\|c.utf8'; then
-    export LANG=C.UTF-8
-    export LC_ALL=C.UTF-8
-elif locale -a 2>/dev/null | grep -qi 'en_us.utf'; then
-    export LANG=en_US.UTF-8
-    export LC_ALL=en_US.UTF-8
-else
+# 使用实际测试而非仅依赖 locale -a，确保 locale 真正可用
+set_locale() {
+    local candidates=("C.UTF-8" "en_US.UTF-8" "zh_CN.UTF-8" "C")
+    for loc in "${candidates[@]}"; do
+        # 尝试使用该 locale 运行 locale 命令，成功则表示支持
+        if LC_ALL="$loc" locale >/dev/null 2>&1; then
+            export LANG="$loc"
+            export LC_ALL="$loc"
+            return 0
+        fi
+    done
+    # 如果都不行，强制使用 C
     export LANG=C
     export LC_ALL=C
-fi
+}
+set_locale
 
 # 常量定义
 SCRIPT_URL="https://raw.githubusercontent.com/uykb/lfx1848/main/uykb1.sh"
