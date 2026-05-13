@@ -488,12 +488,13 @@ show_menu() {
     echo "请输入数字进行选择 并 回车确认"
 }
 
-# 主循环
-while true; do
-    show_menu
-    read -rp "请选择: " chosen < /dev/tty 2>/dev/null || read -rp "请选择: " chosen
+# 主菜单循环函数
+main_menu() {
+    while true; do
+        show_menu
+        read -rp "请选择: " chosen < /dev/tty 2>/dev/null || read -rp "请选择: " chosen
 
-    if [[ "${chosen}" == "1" ]]; then
+        if [[ "${chosen}" == "1" ]]; then
         check_tmux_for_long_task 1
         case "${OS}" in
             debian)
@@ -821,4 +822,8 @@ while true; do
     echo ""
     log_msg "INFO" "按回车键返回主菜单..."
     read -r < /dev/tty 2>/dev/null || read -r
-done
+    done
+}
+
+# 启动主菜单
+main_menu
