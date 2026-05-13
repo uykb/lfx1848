@@ -742,67 +742,190 @@ main_menu() {
         log_msg "INFO" "清理完成！"
         df -h / 2>/dev/null || true
     elif [[ "${chosen}" == "7" ]]; then
-        if ! command -v tmux &> /dev/null; then
-            log_msg "INFO" "正在安装 tmux..."
-            case "${PKG_MGR}" in
-                apt)
-                    apt-get update -y && apt-get install -y tmux
-                    ;;
-                dnf)
-                    dnf install -y tmux
-                    ;;
-                yum)
-                    yum install -y tmux
-                    ;;
-                apk)
-                    apk add tmux
-                    ;;
-                pacman)
-                    pacman -Sy --noconfirm tmux
-                    ;;
-                *)
-                    log_msg "ERROR" "无法自动安装 tmux，请手动安装"
-                    continue
-                    ;;
-            esac
-        fi
-        log_msg "INFO" "=== Tmux 会话管理 ==="
-        log_msg "INFO" "当前活跃的 tmux 会话:"
-        tmux list-sessions 2>/dev/null || log_msg "INFO" "无活跃会话"
+        tmux_manager
+# Tmux 会话管理函数
+tmux_manager() {
+    if ! command -v tmux &> /dev/null; then
+        log_msg "INFO" "正在安装 tmux..."
+        case "${PKG_MGR}" in
+            apt)
+                apt-get update -y && apt-get install -y tmux
+                ;;
+            dnf)
+                dnf install -y tmux
+                ;;
+            yum)
+                yum install -y tmux
+                ;;
+            apk)
+                apk add tmux
+                ;;
+            pacman)
+                pacman -Sy --noconfirm tmux
+                ;;
+            *)
+                log_msg "ERROR" "无法自动安装 tmux，请手动安装"
+                return 1
+                ;;
+        esac
+    fi
+
+    while true; do
+        # 清屏并显示标题
+        clear 2>/dev/null || true
+        echo -e "\033[1;36m╔══════════════════════════════════════════════════════════╗\033[0m"
+        echo -e "\033[1;36m║              \033[1;33m📦 Tmux 会话管理器\033[1;36m                  ║\033[0m"
+        echo -e "\033[1;36m╚══════════════════════════════════════════════════════════╝\033[0m"
         echo ""
-        log_msg "INFO" "1. 创建新会话并运行脚本"
-        log_msg "INFO" "2. 附加到现有会话"
-        log_msg "INFO" "3. 删除指定会话"
-        log_msg "INFO" "0. 返回主菜单"
-        local tmux_choice
-        read -rp "请选择: " tmux_choice < /dev/tty 2>/dev/null || read -rp "请选择: " tmux_choice
+
+        # 获取会话列表
+        local sessions
+        sessions="$(tmux list-sessions -F '#{session_name}|#{session_windows}|#{session_created_string}|#{?session_attached,已连接,未连接}' 2>/dev/null)"
+        
+        if [[ -z "${sessions}" ]]; then
+            echo -e "  \033[1;33m⚠️  当前无活跃会话\033[0m"
+        else
+            echo -e "  \033[1;32m📋 活跃会话列表:\033[0m"
+            echo -e "  \033[1;30m┌──────┬──────────────────┬────────┬──────────────┬──────────┐\033[0m"
+            echo -e "  \033[1;30m│ 编号 │ 会话名称         │ 窗口数 │ 创建时间     │ 状态     │\033[0m"
+            echo -e "  \033[1;30m├──────┼──────────────────┼────────┼──────────────┼──────────┤\033[0m"
+            
+            local idx=1
+            while IFS='|' read -r name windows created status; do
+                [[ -z "${name}" ]] && continue
+                local color="\033[0m"
+                local status_icon="${status}"
+                if [[ "${status}" == "已连接" ]]; then
+                    color="\033[1;32m"
+                    status_icon="🟢 已连接"
+                else
+                    status_icon="⚪ 未连接"
+                fi
+                printf "  \033[1;30m│\033[0m  %-3s \033[1;30m│\033[0m ${color}%-16s\033[0m \033[1;30m│\033[0m  %-5s \033[1;30m│\033[0m %-12s \033[1;30m│\033[0m %s \033[1;30m│\033[0m\n" \
+                    "${idx}" "${name}" "${windows}" "${created}" "${status_icon}"
+                idx=$((idx + 1))
+            done <<< "${sessions}"
+            echo -e "  \033[1;30m└──────┴──────────────────┴────────┴──────────────┴──────────┘\033[0m"
+        fi
+        
+        echo ""
+        echo -e "  \033[1;36m操作选项:\033[0m"
+        echo -e "    \033[1;33m[1]\033[0m 创建新会话并运行脚本"
+        echo -e "    \033[1;33m[2]\033[0m 连接到指定会话"
+        echo -e "    \033[1;33m[3]\033[0m 删除指定会话"
+        echo -e "    \033[1;33m[4]\033[0m 删除所有未连接会话"
+        echo -e "    \033[1;33m[0]\033[0m 返回主菜单"
+        echo ""
+        read -rp "  请选择操作 [0-4]: " tmux_choice
+        echo ""
+
         case "${tmux_choice}" in
             1)
                 local session_name
-                read -rp "会话名称 (默认: uykb1): " session_name < /dev/tty 2>/dev/null || read -rp "会话名称 (默认: uykb1): " session_name
+                read -rp "  输入会话名称 (默认: uykb1): " session_name
                 session_name="${session_name:-uykb1}"
+                
+                # 检查会话是否已存在
+                if tmux has-session -t "${session_name}" 2>/dev/null; then
+                    echo -e "  \033[1;31m❌ 会话 '${session_name}' 已存在\033[0m"
+                    read -rp "  按回车键继续..."
+                    continue
+                fi
+                
                 tmux new-session -d -s "${session_name}"
                 tmux send-keys -t "${session_name}" "bash \"$0\"" Enter
-                log_msg "INFO" "已创建会话 '${session_name}' 并启动脚本"
-                log_msg "INFO" "使用 'tmux attach -t ${session_name}' 查看"
+                echo -e "  \033[1;32m✅ 已创建会话 '${session_name}' 并启动脚本\033[0m"
+                echo -e "  \033[1;36m💡 使用 'tmux attach -t ${session_name}' 连接\033[0m"
+                read -rp "  按回车键继续..."
                 ;;
             2)
-                local attach_name
-                read -rp "会话名称: " attach_name < /dev/tty 2>/dev/null || read -rp "会话名称: " attach_name
-                tmux attach-session -t "${attach_name}" 2>/dev/null || log_msg "ERROR" "会话不存在"
+                if [[ -z "${sessions}" ]]; then
+                    echo -e "  \033[1;31m❌ 无可用会话\033[0m"
+                    read -rp "  按回车键继续..."
+                    continue
+                fi
+                
+                read -rp "  输入会话编号或名称: " target
+                local target_name
+                if [[ "${target}" =~ ^[0-9]+$ ]]; then
+                    # 按编号查找
+                    local idx=1
+                    while IFS='|' read -r name _ _ _; do
+                        if [[ "${idx}" -eq "${target}" ]]; then
+                            target_name="${name}"
+                            break
+                        fi
+                        idx=$((idx + 1))
+                    done <<< "${sessions}"
+                else
+                    target_name="${target}"
+                fi
+                
+                if [[ -n "${target_name}" ]] && tmux has-session -t "${target_name}" 2>/dev/null; then
+                    echo -e "  \033[1;32m✅ 正在连接到会话 '${target_name}'...\033[0m"
+                    sleep 1
+                    tmux attach-session -t "${target_name}"
+                else
+                    echo -e "  \033[1;31m❌ 会话不存在\033[0m"
+                fi
+                read -rp "  按回车键继续..."
                 ;;
             3)
-                local kill_name
-                read -rp "要删除的会话名称: " kill_name < /dev/tty 2>/dev/null || read -rp "要删除的会话名称: " kill_name
-                tmux kill-session -t "${kill_name}" 2>/dev/null && log_msg "INFO" "已删除会话" || log_msg "ERROR" "删除失败"
+                if [[ -z "${sessions}" ]]; then
+                    echo -e "  \033[1;31m❌ 无可用会话\033[0m"
+                    read -rp "  按回车键继续..."
+                    continue
+                fi
+                
+                read -rp "  输入要删除的会话编号或名称: " target
+                local target_name
+                if [[ "${target}" =~ ^[0-9]+$ ]]; then
+                    local idx=1
+                    while IFS='|' read -r name _ _ _; do
+                        if [[ "${idx}" -eq "${target}" ]]; then
+                            target_name="${name}"
+                            break
+                        fi
+                        idx=$((idx + 1))
+                    done <<< "${sessions}"
+                else
+                    target_name="${target}"
+                fi
+                
+                if [[ -n "${target_name}" ]] && tmux has-session -t "${target_name}" 2>/dev/null; then
+                    read -rp "  确认删除会话 '${target_name}'? [y/N]: " confirm
+                    if [[ "${confirm}" =~ ^[Yy]$ ]]; then
+                        tmux kill-session -t "${target_name}" && \
+                            echo -e "  \033[1;32m✅ 已删除会话\033[0m" || \
+                            echo -e "  \033[1;31m❌ 删除失败\033[0m"
+                    else
+                        echo -e "  \033[1;33m⚠️  已取消\033[0m"
+                    fi
+                else
+                    echo -e "  \033[1;31m❌ 会话不存在\033[0m"
+                fi
+                read -rp "  按回车键继续..."
+                ;;
+            4)
+                local count=0
+                while IFS='|' read -r name _ _ status; do
+                    if [[ "${status}" != "已连接" ]]; then
+                        tmux kill-session -t "${name}" 2>/dev/null && count=$((count + 1))
+                    fi
+                done <<< "${sessions}"
+                echo -e "  \033[1;32m✅ 已清理 ${count} 个未连接的会话\033[0m"
+                read -rp "  按回车键继续..."
                 ;;
             0)
-                continue
+                return 0
                 ;;
             *)
-                log_msg "ERROR" "无效选择"
+                echo -e "  \033[1;31m❌ 无效选择\033[0m"
+                sleep 1
                 ;;
         esac
+    done
+}
     elif [[ "${chosen}" == "0" ]]; then
         log_msg "INFO" "退出脚本"
         exit 0 
