@@ -145,42 +145,6 @@ validate_ip() {
 }
 
 # 服务管理函数
-check_tmux_for_long_task() {
-    local task_id="$1"
-    if [[ -n "${TMUX:-}" ]]; then
-        return 0
-    fi
-    
-    if ! command -v tmux &> /dev/null; then
-        log_msg "WARN" "警告：未安装 tmux，网络断开将导致任务中断"
-        local continue_without_tmux
-        read -rp "是否继续? [y/n]: " continue_without_tmux < /dev/tty 2>/dev/null || read -rp "是否继续? [y/n]: " continue_without_tmux
-        if [[ "${continue_without_tmux}" != "y" && "${continue_without_tmux}" != "Y" ]]; then
-            log_msg "INFO" "请先安装 tmux: sudo apt install tmux (Debian/Ubuntu) 或 sudo yum install tmux (CentOS)"
-            exit 0
-        fi
-        return 0
-    fi
-    
-    log_msg "INFO" "检测到耗时任务，建议在 tmux 会话中运行以防网络断开"
-    local switch_to_tmux
-    read -rp "是否切换到 tmux 会话运行? [y/n]: " switch_to_tmux < /dev/tty 2>/dev/null || read -rp "是否切换到 tmux 会话运行? [y/n]: " switch_to_tmux
-    if [[ "${switch_to_tmux}" == "y" || "${switch_to_tmux}" == "Y" ]]; then
-        local session_name="uykb1_task"
-        if tmux has-session -t "${session_name}" 2>/dev/null; then
-            tmux kill-session -t "${session_name}"
-        fi
-        tmux new-session -d -s "${session_name}"
-        tmux send-keys -t "${session_name}" "bash \"$0\" ${task_id}" Enter
-        log_msg "INFO" "已在 tmux 会话 '${session_name}' 中启动任务"
-        log_msg "INFO" "查看进度: tmux attach -t ${session_name}"
-        log_msg "INFO" "分离会话: 输入 'tmux detach' 或按 Ctrl+B D"
-        tmux attach-session -t "${session_name}"
-        exit 0
-    fi
-}
-
-# 服务管理函数
 service_restart() {
     local svc="$1"
     case "${INIT_SYS}" in
@@ -665,192 +629,11 @@ show_menu() {
         4. 限制IP登录服务器
         5. 安装 Docker
         6. 快速清理 Linux 资源
-        7. Tmux 会话管理
-        8. 安装 Hysteria2
+        7. 安装 Hysteria2
         0. 退出脚本
 ------------------------------------------------------------------------------
 "
     echo "请输入数字进行选择 并 回车确认"
-}
-
-# Tmux 会话管理函数
-tmux_manager() {
-    if ! command -v tmux &> /dev/null; then
-        log_msg "INFO" "正在安装 tmux..."
-        case "${PKG_MGR}" in
-            apt)
-                apt-get update -y && apt-get install -y tmux
-                ;;
-            dnf)
-                dnf install -y tmux
-                ;;
-            yum)
-                yum install -y tmux
-                ;;
-            apk)
-                apk add tmux
-                ;;
-            pacman)
-                pacman -Sy --noconfirm tmux
-                ;;
-            *)
-                log_msg "ERROR" "无法自动安装 tmux，请手动安装"
-                return 1
-                ;;
-        esac
-    fi
-
-    while true; do
-        clear 2>/dev/null || true
-        echo -e "\033[1;36m╔══════════════════════════════════════════════════════════╗\033[0m"
-        echo -e "\033[1;36m║              \033[1;33m📦 Tmux 会话管理器\033[1;36m                  ║\033[0m"
-        echo -e "\033[1;36m╚══════════════════════════════════════════════════════════╝\033[0m"
-        echo ""
-
-        local sessions
-        sessions="$(tmux list-sessions -F '#{session_name}|#{session_windows}|#{session_created_string}|#{?session_attached,已连接,未连接}' 2>/dev/null)"
-        
-        if [[ -z "${sessions}" ]]; then
-            echo -e "  \033[1;33m⚠️  当前无活跃会话\033[0m"
-        else
-            echo -e "  \033[1;32m📋 活跃会话列表:\033[0m"
-            echo -e "  \033[1;30m┌──────┬──────────────────┬────────┬──────────────┬──────────┐\033[0m"
-            echo -e "  \033[1;30m│ 编号 │ 会话名称         │ 窗口数 │ 创建时间     │ 状态     │\033[0m"
-            echo -e "  \033[1;30m├──────┼──────────────────┼────────┼──────────────┼──────────┤\033[0m"
-            
-            local idx=1
-            while IFS='|' read -r name windows created status; do
-                [[ -z "${name}" ]] && continue
-                local color="\033[0m"
-                local status_icon="${status}"
-                if [[ "${status}" == "已连接" ]]; then
-                    color="\033[1;32m"
-                    status_icon="🟢 已连接"
-                else
-                    status_icon="⚪ 未连接"
-                fi
-                printf "  \033[1;30m│\033[0m  %-3s \033[1;30m│\033[0m ${color}%-16s\033[0m \033[1;30m│\033[0m  %-5s \033[1;30m│\033[0m %-12s \033[1;30m│\033[0m %s \033[1;30m│\033[0m\n" \
-                    "${idx}" "${name}" "${windows}" "${created}" "${status_icon}"
-                idx=$((idx + 1))
-            done <<< "${sessions}"
-            echo -e "  \033[1;30m└──────┴──────────────────┴────────┴──────────────┴──────────┘\033[0m"
-        fi
-        
-        echo ""
-        echo -e "  \033[1;36m操作选项:\033[0m"
-        echo -e "    \033[1;33m[1]\033[0m 创建新会话并运行脚本"
-        echo -e "    \033[1;33m[2]\033[0m 连接到指定会话"
-        echo -e "    \033[1;33m[3]\033[0m 删除指定会话"
-        echo -e "    \033[1;33m[4]\033[0m 删除所有未连接会话"
-        echo -e "    \033[1;33m[0]\033[0m 返回主菜单"
-        echo ""
-        read -rp "  请选择操作 [0-4]: " tmux_choice
-        echo ""
-
-        case "${tmux_choice}" in
-            1)
-                local session_name
-                read -rp "  输入会话名称 (默认: uykb1): " session_name
-                session_name="${session_name:-uykb1}"
-                
-                if tmux has-session -t "${session_name}" 2>/dev/null; then
-                    echo -e "  \033[1;31m❌ 会话 '${session_name}' 已存在\033[0m"
-                    read -rp "  按回车键继续..."
-                    continue
-                fi
-                
-                tmux new-session -d -s "${session_name}"
-                tmux send-keys -t "${session_name}" "bash \"$0\"" Enter
-                echo -e "  \033[1;32m✅ 已创建会话 '${session_name}'，正在进入...\033[0m"
-                sleep 1
-                exec tmux attach-session -t "${session_name}"
-                ;;
-            2)
-                if [[ -z "${sessions}" ]]; then
-                    echo -e "  \033[1;31m❌ 无可用会话\033[0m"
-                    read -rp "  按回车键继续..."
-                    continue
-                fi
-                
-                read -rp "  输入会话编号或名称: " target
-                local target_name
-                if [[ "${target}" =~ ^[0-9]+$ ]]; then
-                    local idx=1
-                    while IFS='|' read -r name _ _ _; do
-                        if [[ "${idx}" -eq "${target}" ]]; then
-                            target_name="${name}"
-                            break
-                        fi
-                        idx=$((idx + 1))
-                    done <<< "${sessions}"
-                else
-                    target_name="${target}"
-                fi
-                
-                if [[ -n "${target_name}" ]] && tmux has-session -t "${target_name}" 2>/dev/null; then
-                    echo -e "  \033[1;32m✅ 正在连接到会话 '${target_name}'...\033[0m"
-                    sleep 1
-                    exec tmux attach-session -t "${target_name}"
-                else
-                    echo -e "  \033[1;31m❌ 会话不存在\033[0m"
-                    read -rp "  按回车键继续..."
-                fi
-                ;;
-            3)
-                if [[ -z "${sessions}" ]]; then
-                    echo -e "  \033[1;31m❌ 无可用会话\033[0m"
-                    read -rp "  按回车键继续..."
-                    continue
-                fi
-                
-                read -rp "  输入要删除的会话编号或名称: " target
-                local target_name
-                if [[ "${target}" =~ ^[0-9]+$ ]]; then
-                    local idx=1
-                    while IFS='|' read -r name _ _ _; do
-                        if [[ "${idx}" -eq "${target}" ]]; then
-                            target_name="${name}"
-                            break
-                        fi
-                        idx=$((idx + 1))
-                    done <<< "${sessions}"
-                else
-                    target_name="${target}"
-                fi
-                
-                if [[ -n "${target_name}" ]] && tmux has-session -t "${target_name}" 2>/dev/null; then
-                    read -rp "  确认删除会话 '${target_name}'? [y/N]: " confirm
-                    if [[ "${confirm}" =~ ^[Yy]$ ]]; then
-                        tmux kill-session -t "${target_name}" && \
-                            echo -e "  \033[1;32m✅ 已删除会话\033[0m" || \
-                            echo -e "  \033[1;31m❌ 删除失败\033[0m"
-                    else
-                        echo -e "  \033[1;33m⚠️  已取消\033[0m"
-                    fi
-                else
-                    echo -e "  \033[1;31m❌ 会话不存在\033[0m"
-                fi
-                read -rp "  按回车键继续..."
-                ;;
-            4)
-                local count=0
-                while IFS='|' read -r name _ _ status; do
-                    if [[ "${status}" != "已连接" ]]; then
-                        tmux kill-session -t "${name}" 2>/dev/null && count=$((count + 1))
-                    fi
-                done <<< "${sessions}"
-                echo -e "  \033[1;32m✅ 已清理 ${count} 个未连接的会话\033[0m"
-                read -rp "  按回车键继续..."
-                ;;
-            0)
-                return 0
-                ;;
-            *)
-                echo -e "  \033[1;31m❌ 无效选择\033[0m"
-                sleep 1
-                ;;
-        esac
-    done
 }
 
 # 主菜单循环函数
@@ -860,7 +643,6 @@ main_menu() {
         read -rp "请选择: " chosen < /dev/tty 2>/dev/null || read -rp "请选择: " chosen
 
         if [[ "${chosen}" == "1" ]]; then
-        check_tmux_for_long_task 1
         case "${OS}" in
             debian)
                 log_msg "WARN" "警告：升级到 Debian sid (unstable) 可能导致系统不稳定！"
@@ -905,7 +687,6 @@ main_menu() {
                 ;;
         esac
     elif [[ "${chosen}" == "2" ]]; then
-        check_tmux_for_long_task 2
         log_msg "INFO" "正在安装 BBR..."
         # 安装必要依赖
         case "${PKG_MGR}" in
@@ -1023,7 +804,6 @@ main_menu() {
         esac
         log_msg "INFO" "已配置仅允许IP ${allow_ips[*]} 登录SSH"
     elif [[ "${chosen}" == "5" ]]; then
-        check_tmux_for_long_task 5
         log_msg "INFO" "正在安装 Docker..."
         case "${OS}" in
             alpine)
@@ -1107,9 +887,6 @@ main_menu() {
         log_msg "INFO" "清理完成！"
         df -h / 2>/dev/null || true
     elif [[ "${chosen}" == "7" ]]; then
-        tmux_manager
-    elif [[ "${chosen}" == "8" ]]; then
-        check_tmux_for_long_task 8
         hy2_install
     elif [[ "${chosen}" == "0" ]]; then
         log_msg "INFO" "退出脚本"
