@@ -472,7 +472,7 @@ auth:
 masquerade:
   type: proxy
   proxy:
-    url: https://bing.com/
+    url: https://odoo.com/
     rewriteHost: true
 EOF
 }
@@ -567,7 +567,7 @@ hy2_install() {
     openssl req -x509 -nodes -newkey ec:<(openssl ecparam -name prime256v1) \
         -keyout /etc/hysteria/server.key \
         -out /etc/hysteria/server.crt \
-        -subj "/CN=bing.com" -days 36500 2>/dev/null || {
+        -subj "/CN=odoo.com" -days 36500 2>/dev/null || {
         log_msg "ERROR" "生成 SSL 证书失败"
         return 1
     }
@@ -603,7 +603,7 @@ hy2_install() {
     log_msg "INFO" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     log_msg "INFO" "服务器地址: 服务器IP:${hy2_port}"
     log_msg "INFO" "密码: ${hy2_password}"
-    log_msg "INFO" "TLS SNI: bing.com"
+    log_msg "INFO" "TLS SNI: odoo.com"
     log_msg "INFO" "端口: ${hy2_port}"
     log_msg "INFO" "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     log_msg "INFO" "配置文件: /etc/hysteria/config.yaml"
